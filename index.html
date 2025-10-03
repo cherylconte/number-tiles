@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Number Tiles</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f0f0f0;
+    user-select: none;
+  }
+  #settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 15px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-bottom: 1px solid #ccc;
+  }
+  #settings > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 110px;
+  }
+  label {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+  }
+  input[type=number], input[type=color] {
+    padding: 5px;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  button {
+    padding: 8px 16px;
+    font-size: 1rem;
+    cursor: pointer;
+    border: none;
+    background-color: #0066cc;
+    color: white;
+    border-radius: 4px;
+    margin-top: 20px;
+    flex-shrink: 0;
+  }
+  button:hover {
+    background-color: #004a99;
+  }
+  #board {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.15);
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .tile {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    cursor: grab;
+    user-select: none;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  }
+  .tile.dragging {
+    cursor: grabbing;
+    transform: scale(1.05);
+    z-index: 9999;
+  }
+  @media (max-width: 650px) {
+    #settings > div {
+      min-width: 48%;
+    }
+    button {
+      margin-top: 10px;
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="settings">
+  <div>
+    <label for="minNumber">Min Number:</label>
+    <input type="number" id="minNumber" value="0" min="0" max="100">
+  </div>
+  <div>
+    <label for="maxNumber">Max Number:</label>
+    <input type="number" id="maxNumber" value="9" min="0" max="100">
+  </div>
+  <div>
+    <label for="numSets">Number of Sets:</label>
+    <input type="number" id="numSets" value="1" min="1" max="10">
+  </div>
+  <div>
+    <label for="tileSize">Tile Size (px):</label>
+    <input type="number" id="tileSize" value="90" min="40" max="300">
+  </div>
+  <div>
+    <label for="tileColor">Tile Color:</label>
+    <input type="color" id="tileColor" value="#ffbf00">
+  </div>
+  <div>
+    <label for="textColor">Number Color:</label>
+    <input type="color" id="textColor" value="#111111">
+  </div>
+  <div>
+    <label for="bgColor">Board Background:</label>
+    <input type="color" id="bgColor" value="#ffffff">
+  </div>
+  <button id="createBoardBtn" style="align-self: flex-end;">Create Tiles</button>
+</div>
+
+<div id="board"></div>
+
+<script>
+(() => {
+  const board = document.getElementById('board');
+  const createBtn = document.getElementById('createBoardBtn');
+
+  function createTile(number, size, tileColor, textColor, zIndex, x, y) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.textContent = number;
+    tile.style.width = size + 'px';
+    tile.style.height = size + 'px';
+    tile.style.backgroundColor = tileColor;
+    tile.style.color = textColor;
+    tile.style.left = x + 'px';
+    tile.style.top = y + 'px';
+    tile.style.fontSize = size * 0.5 + 'px';
+    tile.style.borderRadius = Math.min(20, size / 5) + 'px';
+    tile.style.zIndex = zIndex;
+
+    let drag = false, offsetX, offsetY;
+    tile.addEventListener('pointerdown', e => {
+      drag = true;
+      tile.classList.add('dragging');
+      tile.style.zIndex = 9999;
+      offsetX = e.clientX - tile.offsetLeft;
+      offsetY = e.clientY - tile.offsetTop;
+      tile.setPointerCapture(e.pointerId);
+    });
+    tile.addEventListener('pointermove', e => {
+      if (!drag) return;
+      let nx = e.clientX - offsetX;
+      let ny = e.clientY - offsetY;
+      nx = Math.max(0, Math.min(nx, board.clientWidth - size));
+      ny = Math.max(0, Math.min(ny, board.clientHeight - size));
+      tile.style.left = nx + 'px';
+      tile.style.top = ny + 'px';
+    });
+    tile.addEventListener('pointerup', e => {
+      drag = false;
+      tile.classList.remove('dragging');
+    });
+
+    board.appendChild(tile);
+  }
+
+  function createTiles() {
+    board.innerHTML = '';
+    const minNumber = parseInt(document.getElementById('minNumber').value);
+    const maxNumber = parseInt(document.getElementById('maxNumber').value);
+    const numSets = parseInt(document.getElementById('numSets').value);
+    const size = parseInt(document.getElementById('tileSize').value);
+    const tileColor = document.getElementById('tileColor').value;
+    const textColor = document.getElementById('textColor').value;
+    const bgColor = document.getElementById('bgColor').value;
+
+    board.style.backgroundColor = bgColor;
+
+    let numbers = [];
+    for (let s = 0; s < numSets; s++) {
+      for (let n = minNumber; n <= maxNumber; n++) numbers.push(n);
+    }
+
+    // shuffle
+    for (let i = numbers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+
+    // place tiles in a grid initially
+    const gap = 20;
+    const cols = Math.floor(board.clientWidth / (size + gap));
+    numbers.forEach((num, index) => {
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      const x = col * (size + gap) + gap / 2;
+      const y = row * (size + gap) + gap / 2;
+      createTile(num, size, tileColor, textColor, index + 1, x, y);
+    });
+  }
+
+  createBtn.addEventListener('click', createTiles);
+  createTiles();
+})();
+</script>
+
+</body>
+</html>
+
+
+
